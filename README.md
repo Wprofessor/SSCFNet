@@ -1,4 +1,4 @@
 # SSCFNet
-A Multi-layer Semantic Feature  Enhanced Fusion Network
+A Spatial-spectral Cross Fusion Network for Remote Sensing Change Detection
 
 The full code will be open sourced soon...
