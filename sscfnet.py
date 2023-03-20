@@ -6,13 +6,13 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class MSFEFNet(BaseNet):
+class SSCFNet(BaseNet):
     def __init__(self, backbone, pretrained, nclass, lightweight):
-        super(MSFEFNet, self).__init__(backbone, pretrained)
+        super(SSCFNet, self).__init__(backbone, pretrained)
 
         channel_list = self.backbone.channels
 
-        self.head_bin = MSFEFHead(channel_list, 1, lightweight)
+        self.head_bin = SSCFHead(channel_list, 1, lightweight)
 
     def base_forward(self, x1, x2, muti_loss=False):
         b, c, h, w = x1.shape
@@ -40,9 +40,9 @@ class MSFEFNet(BaseNet):
             return out_bin.squeeze(1)
 
 
-class MSFEFHead(nn.Module):
+class SSCFHead(nn.Module):
     def __init__(self, in_channels_list, out_channels, lightweight):
-        super(MSFEFHead, self).__init__()
+        super(SSCFHead, self).__init__()
         print(in_channels_list)
         inter_channel_list = [sum(in_channels_list[1:]) // 16] * 4
         self.dsn0 = self.dsn(inter_channel_list[0])
@@ -52,7 +52,7 @@ class MSFEFHead(nn.Module):
 
         in_channel = sum(in_channels_list[1:]) // 4
         inter_channels = in_channel // 4
-        self.MSFEF_Pyramid = MSFEF_Pyramid(in_channels_list)
+        self.SSCF_Pyramid = SSCF_Pyramid(in_channels_list)
 
         self.conv5 = nn.Sequential(
             conv3x3(inter_channels, inter_channels, lightweight),
@@ -70,7 +70,7 @@ class MSFEFHead(nn.Module):
         )
 
     def forward(self, x):
-        aux, out = self.MSFEF_Pyramid(x)
+        aux, out = self.SSCF_Pyramid(x)
         out = self.conv5(out)
         aux0 = self.dsn0(aux[0])
         aux1 = self.dsn1(aux[1])
@@ -79,9 +79,9 @@ class MSFEFHead(nn.Module):
         return [aux0, aux1, aux2, aux3], out
 
 
-class MSFEF_Pyramid(nn.Module):
+class SSCF_Pyramid(nn.Module):
     def __init__(self, in_channels_list, conv_kernels=[3, 5, 7, 9], conv_groups=[2, 4, 8, 16]):
-        super(MSFEF_Pyramid, self).__init__()
+        super(SSCF_Pyramid, self).__init__()
         self.rank_strategy = [[0, 1, 2, 3], [1, 2, 3, 0], [2, 3, 0, 1], [3, 0, 1, 2]]
         in_channel = (in_channels_list[-1] + in_channels_list[-2] + in_channels_list[-3] + in_channels_list[-4]) // 4
         out_channel = in_channel // 4
@@ -156,20 +156,6 @@ class MSFEF_Pyramid(nn.Module):
 if __name__ == '__main__':
     x1 = torch.rand([1, 3, 256, 256])
     x2 = torch.rand([1, 3, 256, 256])
-    model = MSFEFNet('resnet50', False, 2, True)
-    # print(model.named_children())
-    # for out in model(x1, x2)[0]:
-    #     print(out.shape)
-    # for name, module in model.backbone.named_children():
-    #     print(name)
-    # for index, layer in enumerate(model.backbone):
-    #     print(index,layer)
+    model = SSCFNet('resnet50', False, 2, True)
 
-    from thop import profile
 
-    # model = resnet50()
-    # input = torch.randn(1, 3, 224, 224)
-    macs, params = profile(model, inputs=(x1, x2))
-    print(
-        "%s | %.2f | %.2f" % ('ourmodel', params / (1000 ** 2), macs / (1000 ** 3))
-    )
